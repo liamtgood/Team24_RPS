@@ -1,7 +1,6 @@
 import cv2
 import mediapipe as mp
 import random
-import time
 import tkinter as tk
 from threading import Thread
 
@@ -43,12 +42,14 @@ def start_game():
     scissors_img = cv2.resize(scissors_img, (150, 150))
 
     opponent_move = None  # Store the opponent's move
+    player_choice_img = None  # Store the player's choice image
     last_detected_gesture = None  # Store the last detected gesture
     player_score = 0
     opponent_score = 0
     round_processed = False  # Flag to track if the round result has been processed
     wait_for_next_round = False  # Flag to wait for user input to start the next round
     results = ""  # Initialize result variable
+    winner = ""  # Initialize winner variable
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -60,23 +61,55 @@ def start_game():
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         result = hands.process(rgb_frame)
         detected_gesture = "No hand detected"
-        
-        if result.multi_hand_landmarks:
-            for hand_landmarks in result.multi_hand_landmarks:
-                mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-                gesture = detect_hand_shape(hand_landmarks.landmark)
-                if gesture:
-                    detected_gesture = gesture
 
-        # Check if the player's gesture has changed
-        if not wait_for_next_round and detected_gesture != last_detected_gesture and detected_gesture != "No hand detected":
-            opponent_move = random.choice(['Rock', 'Paper', 'Scissors'])  # Generate a new opponent move
-            last_detected_gesture = detected_gesture  # Update the last detected gesture
-            round_processed = False  # Reset the round flag for the new gesture
+        # Skip gesture processing if waiting for the next round
+        if not wait_for_next_round:
+            if result.multi_hand_landmarks:
+                for hand_landmarks in result.multi_hand_landmarks:
+                    mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+                    gesture = detect_hand_shape(hand_landmarks.landmark)
+                    if gesture:
+                        detected_gesture = gesture
 
-        if detected_gesture == "No hand detected":
-            last_detected_gesture = None
-            round_processed = False  # Reset the round flag
+            # Check if the player's gesture has changed
+            if detected_gesture != last_detected_gesture and detected_gesture != "No hand detected":
+                opponent_move = random.choice(['Rock', 'Paper', 'Scissors'])  # Generate a new opponent move
+                last_detected_gesture = detected_gesture  # Update the last detected gesture
+                round_processed = False  # Reset the round flag for the new gesture
+
+                # Set the player's choice image
+                if detected_gesture == "Rock":
+                    player_choice_img = rock_img
+                elif detected_gesture == "Paper":
+                    player_choice_img = paper_img
+                elif detected_gesture == "Scissors":
+                    player_choice_img = scissors_img
+
+            if detected_gesture == "No hand detected":
+                last_detected_gesture = None
+                round_processed = False  # Reset the round flag
+
+            # Determine the winner (only process once per round)
+            if not round_processed and detected_gesture != "No hand detected" and opponent_move:
+                if detected_gesture == opponent_move:
+                    results = "Draw!"
+                    winner = "=="
+                elif (detected_gesture == "Rock" and opponent_move == "Scissors") or \
+                    (detected_gesture == "Scissors" and opponent_move == "Paper") or \
+                    (detected_gesture == "Paper" and opponent_move == "Rock"):
+                    results = "You Win!"
+                    winner = ">"
+                    player_score += 1
+                else:
+                    results = "You Lose!"
+                    winner = "<"
+                    opponent_score += 1
+                round_processed = True  # Mark the round as processed
+                wait_for_next_round = True  # Wait for user input to start the next round
+
+        # Display the player's choice as an image
+        if player_choice_img is not None:
+            frame[50:200, 50:200] = player_choice_img
 
         # Display the computer's choice as an image
         if opponent_move:
@@ -87,29 +120,17 @@ def start_game():
             elif opponent_move == "Scissors":
                 frame[50:200, w - 200:w - 50] = scissors_img
 
-        # Determine the winner (only process once per round)
-        if not round_processed and detected_gesture != "No hand detected" and opponent_move:
-            if detected_gesture == opponent_move:
-                results = "Draw!"
-            elif (detected_gesture == "Rock" and opponent_move == "Scissors") or \
-                (detected_gesture == "Scissors" and opponent_move == "Paper") or \
-                (detected_gesture == "Paper" and opponent_move == "Rock"):
-                results = "You Win!"
-                player_score += 1
-            else:
-                results = "You Lose!"
-                opponent_score += 1
-            round_processed = True  # Mark the round as processed
-            wait_for_next_round = True  # Wait for user input to start the next round
+        # Display results and winner
+        cv2.putText(frame, results, (300, 300), cv2.FONT_HERSHEY_SIMPLEX, 1, (120, 165, 0), 2)
+        cv2.putText(frame, winner, (300, 120), cv2.FONT_HERSHEY_SIMPLEX, 1, (120, 165, 0), 2)
 
-        cv2.putText(frame, results, (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
         # Draw scores at the bottom of the screen
-        cv2.putText(frame, f"Player Score: {player_score}", (20, h - 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        cv2.putText(frame, f"Opponent Score: {opponent_score}", (w - 355, h - 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        cv2.putText(frame, f"Player Score: {player_score}", (20, h - 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (28, 128, 48), 2)
+        cv2.putText(frame, f"Opponent Score: {opponent_score}", (w - 355, h - 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (20,28,128), 2)
 
         # Display instructions to start the next round
         if wait_for_next_round:
-            cv2.putText(frame, "Press SPACE to start the next round", (50, h - 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+            cv2.putText(frame, "Press SPACE to start the next round", (20, h - 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (120, 165, 0), 2)
 
         cv2.imshow("Hand Gesture Detection", frame)
 
@@ -120,10 +141,14 @@ def start_game():
         elif key == ord(' '):  # Spacebar to start the next round
             wait_for_next_round = False  # Reset the flag to allow the next round
             opponent_move = None  # Reset the opponent's move for the next round
+            player_choice_img = None  # Reset the player's choice image for the next round
+            winner = ""  # Reset the winner for the next round
+            results = ""  # Reset the results for the next round
 
     cap.release()
     cv2.destroyAllWindows()
 
+#aunches game
 def launch_game():
     """Launches the game in a separate thread."""
     game_thread = Thread(target=start_game)
