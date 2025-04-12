@@ -1,5 +1,11 @@
 # How to Run the program.
+This is just the basic setup from the demo workshop to get the camera working and have rps_env installed
 
+
+##
+
+Also I could not get git hub to allow me to put the rps_env file in the repository so that is why you have to install it.
+##
 ### Have Python installed on computer
 
 ### Then in the directory of Team24_RPS run

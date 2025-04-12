@@ -23,7 +23,7 @@ def detect_hand_shape(landmarks):
         return "Paper"
     else:
         return None
-
+#C:\Users\buffy\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe
 def start_game():
     """Starts the hand gesture detection game."""
     mp_hands = mp.solutions.hands
@@ -157,7 +157,7 @@ def launch_game():
 # Create a simple GUI with tkinter
 root = tk.Tk()
 root.title("Rock Paper Scissors")
-root.geometry("400x300")
+root.geometry("600x600")
 
 #add text
 title = tk.Label(root, text="Rock Paper Scissors", font=("Arial", 24), bg="white", fg="blue")
@@ -167,7 +167,8 @@ title.pack(expand=True)
 start_button = tk.Button(root, text="Start Game", command=launch_game, font=("Arial", 16), bg="blue", fg="white")
 start_button.pack(expand=True)
 
-
+import mediapipe
+print(mediapipe.__file__)
 
 # Run the tkinter event loop
 root.mainloop()
